@@ -5,10 +5,6 @@ import requests
 import pandas as pd
 import datetime as dt
 
-# Set the executable path and initialize the chrome browser in splinter
-executable_path = {'executable_path': '/usr/local/bin/chromedriver'}
-browser = Browser('chrome', **executable_path)
-
 def mars_news(browser):
     # Visit the mars nasa news site
     url = 'https://mars.nasa.gov/news/'
@@ -82,24 +78,27 @@ def mars_facts():
     return df.to_html()
 
 def scrape_all():
-   # Initiate headless driver for deployment
-   browser = Browser("chrome", executable_path="chromedriver", headless=True)
-   
-   news_title, news_paragraph = mars_news(browser)
-   browser.quit()
-   # Run all scraping functions and store results in dictionary
-   data = {
-       "news_title": news_title,
-       "news_paragraph": news_paragraph,
-       "featured_image": featured_image(browser),
-       "facts": mars_facts(),
-       "last_modified": dt.datetime.now()
-       }
-   return data
+    # Set the executable path and initialize the chrome browser in splinter
+    executable_path = {'executable_path': '/usr/local/bin/chromedriver'}
+    browser = Browser('chrome', **executable_path)
+    # Initiate headless driver for deployment
+    news_title, news_paragraph = mars_news(browser)
+    # Run all scraping functions and store results in dictionary
+    data = {}
+    data['news_title'] = news_title
+    data['news_paragraph'] = news_paragraph
+    data['featured_image'] = featured_image(browser)
+    data['facts'] = mars_facts()
+    data['last_modified'] = dt.datetime.now()
+    print(data)
+    
+    browser.quit()
+    return data
 
 if __name__ == "__main__":
     # If running as script, print scraped data
-    print(scrape_all())
+    res = scrape_all()
+    print(res)
 
 #Helpful Mongo commands
 #db.destinations.update({"country": "Egypt"},{$set: {"continent": "Antarctica"}}, {'multi':true})
