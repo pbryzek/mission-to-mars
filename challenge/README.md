@@ -4,8 +4,8 @@
 Bootcamp Challenge 10: Module Mission to Mars
 
 ### Portfolio
-[Portfolio Screenshot](./assets/challenge/portfolio_ss.png)
-[Portfolio PDF](./assets/challenge/portfolio.pdf)
+![Portfolio Screenshot](./assets/portfolio_ss.png)
+[Portfolio PDF](./assets/portfolio.pdf)
 
 ### Jupyter Notebooks Created
 - [Mission To Mars](Mission_to_Mars.ipynb)
