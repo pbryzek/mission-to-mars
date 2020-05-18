@@ -1,75 +1,107 @@
 # Import Splinter and BeautifulSoup
 from splinter import Browser
 from bs4 import BeautifulSoup
+import requests
 import pandas as pd
+import datetime as dt
 
-#Method called after clicking each thumbnail to get the title and the img_url
-def get_image_info(img_url):
-    # Set the executable path and initialize the chrome browser in splinter
-    executable_path = {'executable_path': '/usr/local/bin/chromedriver'}
-    #Open new browser to get the info
-    browser_img = Browser('chrome', **executable_path)
-    browser_img.visit(img_url)
+def mars_news(browser):
+    # Visit the mars nasa news site
+    url = 'https://mars.nasa.gov/news/'
+    browser.visit(url)
     
-    #Wait a second for the page to load
-    browser_img.is_element_present_by_text('title', wait_time=1)
-    #Initialize soup for the page
-    img_soup = BeautifulSoup(browser_img.html, 'html.parser')
+    # Optional delay for loading the page
+    browser.is_element_present_by_css("ul.item_list li.slide", wait_time=1)
+    
+    # Convert the browser html to a soup object and then quit the browser
+    html = browser.html
 
+    news_soup = BeautifulSoup(html, 'html.parser')
+    
     try:
-        #Find the title from the h2 tag
-        h2_tag = img_soup.find('h2', {'class': 'title'})
-        title = h2_tag.text
-        #Grab the downloads div as that is where the URLs are stored
-        div_downloads = img_soup.find('div', {'class': 'downloads'})
-        downloads_ul = div_downloads.find("ul")
-        #Get the lis within the ul
-        downloads_li = downloads_ul.find("li")
-        #Get the a within the li
-        a_href = downloads_ul.find("a")    
-        img_url = a_href['href']
+        slide_elem = news_soup.select_one('ul.item_list li.slide')
+        slide_elem.find("div", class_='content_title')
+        
+        # Use the parent element to find the first <a> tag and save it as  `news_title`
+        news_title = slide_elem.find("div", class_='content_title').get_text()
+        news_title
+        # Use the parent element to find the paragraph text
+        news_p = slide_elem.find('div', class_="article_teaser_body").get_text()
+        news_p
     except AttributeError:
         return None, None
-    
-    #Go back to the previous page and continue to the next thumb  
-    browser_img.quit()
-    
-    return (title, img_url)
+    return news_title, news_p
 
-#Scrape method responsible for obtaining titles and urls for all Mars hemispheres
-def scrape():
+def featured_image(browser):
+    # Visit URL
+    url = 'https://www.jpl.nasa.gov/spaceimages/?search=&category=Mars'
+    browser.visit(url)
+    
+    # Find and click the full image button
+    full_image_elem = browser.find_by_id('full_image')
+    full_image_elem.click()
+    
+    # Find the more info button and click that
+    browser.is_element_present_by_text('more info', wait_time=1)
+    more_info_elem = browser.find_link_by_partial_text('more info')
+    more_info_elem.click()
+    
+    # Parse the resulting html with soup
+    html = browser.html
+    img_soup = BeautifulSoup(html, 'html.parser')
+    
+    try:
+        # Find the relative image url
+        img_url_rel = img_soup.select_one('figure.lede a img').get("src")
+    except AttributeError:
+        return None
+
+    # Use the base URL to create an absolute URL
+    img_url = f'https://www.jpl.nasa.gov{img_url_rel}'
+
+    return img_url
+
+def mars_facts():
+    # Add try/except for error handling
+    try:
+        # Use 'read_html' to scrape the facts table into a dataframe
+        df = pd.read_html('http://space-facts.com/mars/')[0]
+
+    except BaseException:
+        return None
+    
+    # Assign columns and set index of dataframe
+    df.columns=['Description', 'Mars']
+    df.set_index('Description', inplace=True)
+    
+    # Convert dataframe into HTML format, add bootstrap
+    return df.to_html()
+
+def scrape_all():
     # Set the executable path and initialize the chrome browser in splinter
     executable_path = {'executable_path': '/usr/local/bin/chromedriver'}
     browser = Browser('chrome', **executable_path)
-
-    # Visit the mars nasa news site
-    url = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
-    browser.visit(url)
-
-    hemispheres = []
-    #User Splinter to get all the divs
-    div_imgs = browser.find_by_tag('div')
-    for div in div_imgs:
-        #Focus on divs with the class item
-        if div['class'] == 'item':
-            #Get the a hrefs within that div
-            a_hrefs = div.find_by_tag("a")
-            #In this case there is only 1 a href
-            a_href = a_hrefs[0]
-            #Verify the class name of the a href
-            if a_href['class'] == 'itemLink product-item':
-                img_url = a_href['href']
-                #Click the thumb for each Hemisphere
-                (title, img_url) = get_image_info(img_url)
-                hemisphere = {}
-                hemisphere['title'] = title
-                hemisphere['img_url'] = img_url
-                hemispheres.append(hemisphere)
+    # Initiate headless driver for deployment
+    news_title, news_paragraph = mars_news(browser)
+    # Run all scraping functions and store results in dictionary
+    data = {}
+    data['news_title'] = news_title
+    data['news_paragraph'] = news_paragraph
+    data['featured_image'] = featured_image(browser)
+    data['facts'] = mars_facts()
+    data['last_modified'] = dt.datetime.now()
+    print(data)
+    
     browser.quit()
-
-    return hemispheres
+    return data
 
 if __name__ == "__main__":
     # If running as script, print scraped data
-    res = scrape()
+    res = scrape_all()
     print(res)
+
+#Helpful Mongo commands
+#db.destinations.update({"country": "Egypt"},{$set: {"continent": "Antarctica"}}, {'multi':true})
+#updateMany funciton.
+#{justOne:true}
+#db.dropDatabase()
